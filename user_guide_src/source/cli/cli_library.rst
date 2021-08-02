@@ -93,6 +93,38 @@ Named keys are also possible::
 
 Finally, you can pass :ref:`validation <validation>` rules to the answer input as the third parameter, the acceptable answers are automatically restricted to the passed options.
 
+
+**promptByKey()**
+
+Predefined answers (options) for prompt sometimes need to be described or are too complex to select via their value.
+``promptByKey()`` allows the user to select an option by its key instead of its value::
+
+    $fruit = CLI::promptByKey('These are your choices:', ['The red apple', 'The plump orange', 'The ripe banana']);
+
+    //These are your choices:
+    //  [0]  The red apple
+    //  [1]  The plump orange
+    //  [2]  The ripe banana
+    //
+    //[0, 1, 2]:
+
+Named keys are also possible::
+
+    $fruit = CLI::promptByKey(['These are your choices:', 'Which would you like?'], [
+        'apple' => 'The red apple',
+        'orange' => 'The plump orange',
+        'banana' => 'The ripe banana'
+    ]);
+
+    //These are your choices:
+    //  [apple]   The red apple
+    //  [orange]  The plump orange
+    //  [banana]  The ripe banana
+    //
+    //Which would you like? [apple, orange, banana]:
+
+Finally, you can pass :ref:`validation <validation>` rules to the answer input as the third parameter, the acceptable answers are automatically restricted to the passed options.
+
 Providing Feedback
 ==================
 
