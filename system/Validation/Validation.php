@@ -1,12 +1,12 @@
 <?php
 
 /**
- * This file is part of CodeIgniter 4 framework.
+ * This file is part of the CodeIgniter 4 framework.
  *
  * (c) CodeIgniter Foundation <admin@codeigniter.com>
  *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace CodeIgniter\Validation;
@@ -86,7 +86,8 @@ class Validation implements ValidationInterface
     /**
      * Validation constructor.
      *
-     * @param ValidationConfig $config
+     * @param ValidationConfig  $config
+     * @param RendererInterface $view
      */
     public function __construct($config, RendererInterface $view)
     {
@@ -104,8 +105,10 @@ class Validation implements ValidationInterface
      * @param array|null  $data    The array of data to validate.
      * @param string|null $group   The predefined group of rules to apply.
      * @param string|null $dbGroup The database group to use.
+     *
+     * @return bool
      */
-    public function run(?array $data = null, ?string $group = null, ?string $dbGroup = null): bool
+    public function run(array $data = null, string $group = null, string $dbGroup = null): bool
     {
         $data = $data ?? $this->data;
 
@@ -160,7 +163,10 @@ class Validation implements ValidationInterface
      * determining whether validation was successful or not.
      *
      * @param mixed    $value
+     * @param string   $rule
      * @param string[] $errors
+     *
+     * @return bool
      */
     public function check($value, string $rule, array $errors = []): bool
     {
@@ -175,13 +181,17 @@ class Validation implements ValidationInterface
      * the error to $this->errors and moves on to the next,
      * so that we can collect all of the first errors.
      *
-     * @param array|string $value
+     * @param string       $field
+     * @param string|null  $label
+     * @param string|array $value
      * @param array|null   $rules
      * @param array        $data
+     *
+     * @return bool
      */
-    protected function processRules(string $field, ?string $label, $value, $rules = null, ?array $data = null): bool
+    protected function processRules(string $field, string $label = null, $value, $rules = null, array $data = null): bool
     {
-        if ($data === null) {
+        if (is_null($data)) {
             throw new InvalidArgumentException('You must supply the parameter: data.');
         }
 
@@ -233,7 +243,7 @@ class Validation implements ValidationInterface
                                 continue;
                             }
 
-                            $passed = $passed && $set->{$rule}($value, $param, $data);
+                            $passed = $passed && $set->$rule($value, $param, $data);
                             break;
                         }
                     }
@@ -274,7 +284,7 @@ class Validation implements ValidationInterface
                     }
 
                     $found  = true;
-                    $passed = $param === false ? $set->{$rule}($value, $error) : $set->{$rule}($value, $param, $data, $error);
+                    $passed = $param === false ? $set->$rule($value, $error) : $set->$rule($value, $param, $data, $error);
 
                     break;
                 }
@@ -291,11 +301,11 @@ class Validation implements ValidationInterface
                 // if the $value is an array, convert it to as string representation
                 if (is_array($value)) {
                     $value = '[' . implode(', ', $value) . ']';
-                } elseif (is_object($value)) {
-                    $value = json_encode($value);
                 }
 
-                $this->errors[$field] = $error ?? $this->getErrorMessage($rule, $field, $label, $param, $value);
+                $this->errors[$field] = is_null($error)
+                    ? $this->getErrorMessage($rule, $field, $label, $param, $value)
+                    : $error; // @phpstan-ignore-line
 
                 return false;
             }
@@ -308,7 +318,9 @@ class Validation implements ValidationInterface
      * Takes a Request object and grabs the input data to use from its
      * array values.
      *
-     * @param IncomingRequest|RequestInterface $request
+     * @param RequestInterface|IncomingRequest $request
+     *
+     * @return ValidationInterface
      */
     public function withRequest(RequestInterface $request): ValidationInterface
     {
@@ -341,9 +353,14 @@ class Validation implements ValidationInterface
      *        'rule' => 'message'
      *    ]
      *
+     * @param string      $field
+     * @param string|null $label
+     * @param string      $rules
+     * @param array       $errors
+     *
      * @return $this
      */
-    public function setRule(string $field, ?string $label, string $rules, array $errors = [])
+    public function setRule(string $field, string $label = null, string $rules, array $errors = [])
     {
         $this->rules[$field] = [
             'label' => $label,
@@ -373,7 +390,10 @@ class Validation implements ValidationInterface
      *        ],
      *    ]
      *
+     * @param array $rules
      * @param array $errors // An array of custom error messages
+     *
+     * @return ValidationInterface
      */
     public function setRules(array $rules, array $errors = []): ValidationInterface
     {
@@ -399,6 +419,8 @@ class Validation implements ValidationInterface
 
     /**
      * Returns all of the rules currently defined.
+     *
+     * @return array
      */
     public function getRules(): array
     {
@@ -407,6 +429,10 @@ class Validation implements ValidationInterface
 
     /**
      * Checks to see if the rule for key $field has been set or not.
+     *
+     * @param string $field
+     *
+     * @return bool
      */
     public function hasRule(string $field): bool
     {
@@ -418,21 +444,21 @@ class Validation implements ValidationInterface
      *
      * @param string $group Group.
      *
-     * @throws InvalidArgumentException If group not found.
-     *
      * @return string[] Rule group.
+     *
+     * @throws InvalidArgumentException If group not found.
      */
     public function getRuleGroup(string $group): array
     {
-        if (! isset($this->config->{$group})) {
+        if (! isset($this->config->$group)) {
             throw ValidationException::forGroupNotFound($group);
         }
 
-        if (! is_array($this->config->{$group})) {
+        if (! is_array($this->config->$group)) {
             throw ValidationException::forGroupNotArray($group);
         }
 
-        return $this->config->{$group};
+        return $this->config->$group;
     }
 
     /**
@@ -448,13 +474,17 @@ class Validation implements ValidationInterface
         $this->setRules($rules);
 
         $errorName = $group . '_errors';
-        if (isset($this->config->{$errorName})) {
-            $this->customErrors = $this->config->{$errorName};
+        if (isset($this->config->$errorName)) {
+            $this->customErrors = $this->config->$errorName;
         }
     }
 
     /**
      * Returns the rendered HTML of the errors as defined in $template.
+     *
+     * @param string $template
+     *
+     * @return string
      */
     public function listErrors(string $template = 'list'): string
     {
@@ -469,6 +499,11 @@ class Validation implements ValidationInterface
 
     /**
      * Displays a single error in formatted HTML as defined in the $template view.
+     *
+     * @param string $field
+     * @param string $template
+     *
+     * @return string
      */
     public function showError(string $field, string $template = 'single'): string
     {
@@ -508,30 +543,32 @@ class Validation implements ValidationInterface
      * same format used with setRules(). Additionally, check
      * for {group}_errors for an array of custom error messages.
      *
+     * @param string|null $group
+     *
      * @return array|ValidationException|null
      */
-    public function loadRuleGroup(?string $group = null)
+    public function loadRuleGroup(string $group = null)
     {
         if (empty($group)) {
             return null;
         }
 
-        if (! isset($this->config->{$group})) {
+        if (! isset($this->config->$group)) {
             throw ValidationException::forGroupNotFound($group);
         }
 
-        if (! is_array($this->config->{$group})) {
+        if (! is_array($this->config->$group)) {
             throw ValidationException::forGroupNotArray($group);
         }
 
-        $this->setRules($this->config->{$group});
+        $this->setRules($this->config->$group);
 
         // If {group}_errors exists in the config file,
         // then override our custom errors with them.
         $errorName = $group . '_errors';
 
-        if (isset($this->config->{$errorName})) {
-            $this->customErrors = $this->config->{$errorName};
+        if (isset($this->config->$errorName)) {
+            $this->customErrors = $this->config->$errorName;
         }
 
         return $this->rules;
@@ -551,6 +588,11 @@ class Validation implements ValidationInterface
      * The value of {id} would be replaced with the actual id in the form data:
      *
      *  'required|is_unique[users,email,id,13]'
+     *
+     * @param array $rules
+     * @param array $data
+     *
+     * @return array
      */
     protected function fillPlaceholders(array $rules, array $data): array
     {
@@ -585,6 +627,10 @@ class Validation implements ValidationInterface
 
     /**
      * Checks to see if an error exists for the given field.
+     *
+     * @param string $field
+     *
+     * @return bool
      */
     public function hasError(string $field): bool
     {
@@ -599,7 +645,7 @@ class Validation implements ValidationInterface
      *
      * @return string Error(s).
      */
-    public function getError(?string $field = null): string
+    public function getError(string $field = null): string
     {
         if ($field === null && count($this->rules) === 1) {
             $field = array_key_first($this->rules);
@@ -637,6 +683,11 @@ class Validation implements ValidationInterface
 
     /**
      * Sets the error for a specific field. Used by custom validation methods.
+     *
+     * @param string $field
+     * @param string $error
+     *
+     * @return ValidationInterface
      */
     public function setError(string $field, string $error): ValidationInterface
     {
@@ -648,10 +699,15 @@ class Validation implements ValidationInterface
     /**
      * Attempts to find the appropriate error message
      *
-     * @param string $param
-     * @param string $value The value that caused the validation to fail.
+     * @param string      $rule
+     * @param string      $field
+     * @param string|null $label
+     * @param string      $param
+     * @param string      $value The value that caused the validation to fail.
+     *
+     * @return string
      */
-    protected function getErrorMessage(string $rule, string $field, ?string $label = null, ?string $param = null, ?string $value = null): string
+    protected function getErrorMessage(string $rule, string $field, string $label = null, string $param = null, string $value = null): string
     {
         // Check if custom message has been defined by user
         if (isset($this->customErrors[$field][$rule])) {
@@ -671,6 +727,10 @@ class Validation implements ValidationInterface
 
     /**
      * Split rules string by pipe operator.
+     *
+     * @param string $rules
+     *
+     * @return array
      */
     protected function splitRules(string $rules): array
     {
@@ -713,6 +773,8 @@ class Validation implements ValidationInterface
     /**
      * Resets the class to a blank slate. Should be called whenever
      * you need to process more than one array.
+     *
+     * @return ValidationInterface
      */
     public function reset(): ValidationInterface
     {

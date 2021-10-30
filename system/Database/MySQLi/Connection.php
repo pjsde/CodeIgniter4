@@ -83,6 +83,19 @@ class Connection extends BaseConnection
     //--------------------------------------------------------------------
 
     /**
+     * MySQLi constant
+     *
+     * For unbuffered queries use `MYSQLI_USE_RESULT`.
+     *
+     * Default mode for buffered queries uses `MYSQLI_STORE_RESULT`.
+     *
+     * @var int
+     */
+    public $resultMode = MYSQLI_STORE_RESULT;
+
+    //--------------------------------------------------------------------
+
+    /**
      * Connect to the database.
      *
      * @throws DatabaseException

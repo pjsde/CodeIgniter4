@@ -1,14 +1,5 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
 namespace CodeIgniter\Commands;
 
 use CodeIgniter\Test\CIUnitTestCase;
@@ -37,12 +28,8 @@ final class CommandGeneratorTest extends CIUnitTestCase
         $file   = str_replace('APPPATH' . DIRECTORY_SEPARATOR, APPPATH, trim(substr($result, 14)));
         $dir    = dirname($file);
 
-        if (is_file($file)) {
-            unlink($file);
-        }
-        if (is_dir($dir) && strpos($dir, 'Commands') !== false) {
-            rmdir($dir);
-        }
+        is_file($file) && unlink($file);
+        is_dir($dir) && strpos($dir, 'Commands') !== false && rmdir($dir);
     }
 
     protected function getFileContents(string $filepath): string
@@ -138,7 +125,7 @@ final class CommandGeneratorTest extends CIUnitTestCase
      */
     public function testGeneratorIsNotConfusedWithNamespaceLikeClassNames(): void
     {
-        $time      = time();
+        $time = time();
         $notExists = true;
         command('make:migration App_Lesson');
 

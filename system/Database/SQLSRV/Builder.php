@@ -1,21 +1,22 @@
 <?php
 
+
 /**
- * This file is part of CodeIgniter 4 framework.
+ * This file is part of the CodeIgniter 4 framework.
  *
  * (c) CodeIgniter Foundation <admin@codeigniter.com>
  *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace CodeIgniter\Database\SQLSRV;
 
+use Closure;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\Exceptions\DatabaseException;
 use CodeIgniter\Database\Exceptions\DataException;
 use CodeIgniter\Database\ResultInterface;
-
 /**
  * Builder for SQLSRV
  *
@@ -59,9 +60,15 @@ class Builder extends BaseBuilder
      */
     public $keyPermission = false;
 
+    //--------------------------------------------------------------------
+
     /**
+     * FROM tables
+     *
      * Groups tables in FROM clauses if needed, so there is no confusion
      * about operator precedence.
+     *
+     * @return string
      */
     protected function _fromTables(): string
     {
@@ -75,10 +82,16 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Truncate statement
+     *
      * Generates a platform-specific truncate string from the supplied data
      *
      * If the database does not support the truncate() command,
      * then this method maps to 'DELETE FROM table'
+     *
+     * @param string $table The table name
+     *
+     * @return string
      */
     protected function _truncate(string $table): string
     {
@@ -86,11 +99,18 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * JOIN
+     *
      * Generates the JOIN portion of the query
+     *
+     * @param string $table
+     * @param string $cond   The join condition
+     * @param string $type   The type of join
+     * @param bool   $escape Whether not to try to escape identifiers
      *
      * @return $this
      */
-    public function join(string $table, string $cond, string $type = '', ?bool $escape = null)
+    public function join(string $table, string $cond, string $type = '', bool $escape = null)
     {
         if ($type !== '') {
             $type = strtoupper(trim($type));
@@ -121,13 +141,12 @@ class Builder extends BaseBuilder
                 $joints     = $joints[0];
                 array_unshift($joints, ['', 0]);
 
-                for ($i = count($joints) - 1, $pos = strlen($cond); $i >= 0; $i--) {
+                for ($i = count($joints) - 1, $pos = strlen($cond); $i >= 0; $i --) {
                     $joints[$i][1] += strlen($joints[$i][0]); // offset
                     $conditions[$i] = substr($cond, $joints[$i][1], $pos - $joints[$i][1]);
                     $pos            = $joints[$i][1] - strlen($joints[$i][0]);
                     $joints[$i]     = $joints[$i][0];
                 }
-
                 ksort($conditions);
             } else {
                 $conditions = [$cond];
@@ -140,7 +159,7 @@ class Builder extends BaseBuilder
                 $operator = $this->getOperator($condition);
 
                 $cond .= $joints[$i];
-                $cond .= preg_match('/(\(*)?([\[\]\w\.\'-]+)' . preg_quote($operator, '/') . '(.*)/i', $condition, $match) ? $match[1] . $this->db->protectIdentifiers($match[2]) . $operator . $this->db->protectIdentifiers($match[3]) : $condition;
+                $cond .= preg_match("/(\(*)?([\[\]\w\.'-]+)" . preg_quote($operator, '/') . '(.*)/i', $condition, $match) ? $match[1] . $this->db->protectIdentifiers($match[2]) . $operator . $this->db->protectIdentifiers($match[3]) : $condition;
             }
         }
 
@@ -156,9 +175,18 @@ class Builder extends BaseBuilder
     }
 
     /**
-     * Generates a platform-specific insert string from the supplied data
+     * Insert statement
      *
-     * @todo implement check for this instead static $insertKeyPermission
+     * Generates a platform-specific insert string from the supplied data
+     * auto-enable
+     *
+     * @todo implement check for this instad static $insertKeyPermission
+     *
+     * @param string $table         The table name
+     * @param array  $keys          The insert keys
+     * @param array  $unescapedKeys The insert values
+     *
+     * @return string
      */
     protected function _insert(string $table, array $keys, array $unescapedKeys): string
     {
@@ -170,18 +198,35 @@ class Builder extends BaseBuilder
         return $this->keyPermission ? $this->addIdentity($fullTableName, $statement) : $statement;
     }
 
+    //--------------------------------------------------------------------
+
     /**
      * Insert batch statement
      *
      * Generates a platform-specific insert string from the supplied data.
+     *
+     * @param string $table  Table name
+     * @param array  $keys   INSERT keys
+     * @param array  $values INSERT values
+     *
+     * @return string
      */
     protected function _insertBatch(string $table, array $keys, array $values): string
     {
         return 'INSERT ' . $this->compileIgnore('insert') . 'INTO ' . $this->getFullName($table) . ' (' . implode(', ', $keys) . ') VALUES ' . implode(', ', $values);
     }
 
+    //--------------------------------------------------------------------
+
     /**
+     * Update statement
+     *
      * Generates a platform-specific update string from the supplied data
+     *
+     * @param string $table  the Table name
+     * @param array  $values the Update data
+     *
+     * @return string
      */
     protected function _update(string $table, array $values): string
     {
@@ -202,10 +247,18 @@ class Builder extends BaseBuilder
         return $this->keyPermission ? $this->addIdentity($fullTableName, $statement) : $statement;
     }
 
+    //--------------------------------------------------------------------
+
     /**
      * Update_Batch statement
      *
      * Generates a platform-specific batch update string from the supplied data
+     *
+     * @param string $table  Table name
+     * @param array  $values Update data
+     * @param string $index  WHERE key
+     *
+     * @return string
      */
     protected function _updateBatch(string $table, array $values, string $index): string
     {
@@ -235,8 +288,13 @@ class Builder extends BaseBuilder
         return 'UPDATE ' . $this->compileIgnore('update') . ' ' . $this->getFullName($table) . ' SET ' . substr($cases, 0, -2) . $this->compileWhereHaving('QBWhere');
     }
 
+    //--------------------------------------------------------------------
+
     /**
      * Increments a numeric column by the specified value.
+     *
+     * @param string $column
+     * @param int    $value
      *
      * @return bool
      */
@@ -249,7 +307,6 @@ class Builder extends BaseBuilder
         } else {
             $values = [$column => "{$column} + {$value}"];
         }
-
         $sql = $this->_update($this->QBFrom[0], $values);
 
         return $this->db->query($sql, $this->binds, false);
@@ -257,6 +314,9 @@ class Builder extends BaseBuilder
 
     /**
      * Decrements a numeric column by the specified value.
+     *
+     * @param string $column
+     * @param int    $value
      *
      * @return bool
      */
@@ -269,7 +329,6 @@ class Builder extends BaseBuilder
         } else {
             $values = [$column => "{$column} + {$value}"];
         }
-
         $sql = $this->_update($this->QBFrom[0], $values);
 
         return $this->db->query($sql, $this->binds, false);
@@ -277,6 +336,10 @@ class Builder extends BaseBuilder
 
     /**
      * Get full name of the table
+     *
+     * @param string $table
+     *
+     * @return string
      */
     private function getFullName(string $table): string
     {
@@ -297,6 +360,11 @@ class Builder extends BaseBuilder
 
     /**
      * Add permision statements for index value inserts
+     *
+     * @param string $fullTable full table name
+     * @param string $insert    statement
+     *
+     * @return string
      */
     private function addIdentity(string $fullTable, string $insert): string
     {
@@ -305,6 +373,11 @@ class Builder extends BaseBuilder
 
     /**
      * Local implementation of limit
+     *
+     * @param string $sql
+     * @param bool   $offsetIgnore
+     *
+     * @return string
      */
     protected function _limit(string $sql, bool $offsetIgnore = false): string
     {
@@ -322,13 +395,17 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Replace
+     *
      * Compiles a replace into string and runs the query
      *
-     * @throws DatabaseException
+     * @param array|null $set An associative array of insert values
      *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
-    public function replace(?array $set = null)
+    public function replace(array $set = null)
     {
         if ($set !== null) {
             $this->set($set);
@@ -353,7 +430,7 @@ class Builder extends BaseBuilder
         }
 
         $this->db->simpleQuery('SET IDENTITY_INSERT ' . $this->getFullName($table) . ' ON');
-
+        
         $result = $this->db->query($sql, $this->binds, false);
         $this->db->simpleQuery('SET IDENTITY_INSERT ' . $this->getFullName($table) . ' OFF');
 
@@ -361,8 +438,17 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Replace statement
+     *
      * Generates a platform-specific replace string from the supplied data
+     *
      * on match delete and insert
+     *
+     * @param string $table  The table name
+     * @param array  $keys   The insert keys
+     * @param array  $values The insert values
+     *
+     * @return string
      */
     protected function _replace(string $table, array $keys, array $values): string
     {
@@ -397,9 +483,9 @@ class Builder extends BaseBuilder
         $bingo  = [];
 
         foreach ($common as $v) {
-            $k = array_search($v, $keys, true);
+            $k = array_search($v, $escKeyFields, true);
 
-            $bingo[$keys[$k]] = $binds[trim($values[$k], ':')];
+            $bingo[$keyFields[$k]] = $binds[trim($values[$k], ':')];
         }
 
         // Querying existing data
@@ -430,6 +516,10 @@ class Builder extends BaseBuilder
      *
      * Handle float return value
      *
+     * @param string $select Field name
+     * @param string $alias
+     * @param string $type
+     *
      * @return BaseBuilder
      */
     protected function maxMinAvgSum(string $select = '', string $alias = '', string $type = 'MAX')
@@ -458,6 +548,8 @@ class Builder extends BaseBuilder
 
         return $this;
     }
+
+    //--------------------------------------------------------------------
 
     /**
      * "Count All" query
@@ -493,8 +585,14 @@ class Builder extends BaseBuilder
         return (int) $query->numrows;
     }
 
+    //--------------------------------------------------------------------
+
     /**
      * Delete statement
+     *
+     * @param string $table The table name
+     *
+     * @return string
      */
     protected function _delete(string $table): string
     {
@@ -502,15 +600,19 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Delete
+     *
      * Compiles a delete string and runs the query
      *
-     * @param mixed $where
-     *
-     * @throws DatabaseException
+     * @param mixed $where     The where clause
+     * @param int   $limit     The limit clause
+     * @param bool  $resetData
      *
      * @return mixed
+     *
+     * @throws DatabaseException
      */
-    public function delete($where = '', ?int $limit = null, bool $resetData = true)
+    public function delete($where = '', int $limit = null, bool $resetData = true)
     {
         $table = $this->db->protectIdentifiers($this->QBFrom[0], true, null, false);
 
@@ -544,7 +646,9 @@ class Builder extends BaseBuilder
      *
      * Generates a query string based on which functions were used.
      *
-     * @param bool $selectOverride
+     * @param mixed $selectOverride
+     *
+     * @return string
      */
     protected function compileSelect($selectOverride = false): string
     {
@@ -587,10 +691,9 @@ class Builder extends BaseBuilder
         }
 
         $sql .= $this->compileWhereHaving('QBWhere')
-            . $this->compileGroupBy()
-            . $this->compileWhereHaving('QBHaving')
-            . $this->compileOrderBy(); // ORDER BY
-
+                . $this->compileGroupBy()
+                . $this->compileWhereHaving('QBHaving')
+                . $this->compileOrderBy(); // ORDER BY
         // LIMIT
         if ($this->QBLimit) {
             $sql = $this->_limit($sql . "\n");
@@ -600,14 +703,90 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * WHERE, HAVING
+     *
+     * @param string $qbKey  'QBWhere' or 'QBHaving'
+     * @param mixed  $key
+     * @param mixed  $value
+     * @param string $type
+     * @param bool   $escape
+     *
+     * @return $this
+     */
+    protected function whereHaving(string $qbKey, $key, $value = null, string $type = 'AND ', bool $escape = null)
+    {
+        if (! is_array($key)) {
+            $key = [$key => $value];
+        }
+
+        // If the escape value was not set will base it on the global setting
+        if (! is_bool($escape)) {
+            $escape = $this->db->protectIdentifiers;
+        }
+
+        foreach ($key as $k => $v) {
+            $prefix = empty($this->$qbKey) ? $this->groupGetType('') : $this->groupGetType($type);
+
+            if ($v !== null) {
+                $op = $this->getOperator($k, true);
+
+                if (! empty($op)) {
+                    $k = trim($k);
+
+                    end($op);
+
+                    $op = trim(current($op));
+
+                    if (substr($k, -1 * strlen($op)) === $op) {
+                        $k = rtrim(strrev(preg_replace(strrev('/' . $op . '/'), strrev(''), strrev($k), 1)));
+                    }
+                }
+
+                $bind = $this->setBind($k, $v, $escape);
+
+                if (empty($op)) {
+                    $k .= ' =';
+                } else {
+                    $k .= " $op";
+                }
+
+                if ($v instanceof Closure) {
+                    $builder = $this->cleanClone();
+                    $v       = '(' . str_replace("\n", ' ', $v($builder)->getCompiledSelect()) . ')';
+                } else {
+                    $v = " :$bind:";
+                }
+            } elseif (! $this->hasOperator($k) && $qbKey !== 'QBHaving') {
+                // value appears not to have been set, assign the test to IS NULL
+                $k .= ' IS NULL';
+            } elseif (preg_match('/\s*(!?=|<>|IS(?:\s+NOT)?)\s*$/i', $k, $match, PREG_OFFSET_CAPTURE)) {
+                $k = substr($k, 0, $match[0][1]) . ($match[1][0] === '=' ? ' IS NULL' : ' IS NOT NULL');
+            }
+
+            $this->{$qbKey}[] = [
+                'condition' => $prefix . $k . $v,
+                'escape'    => $escape,
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get
+     *
      * Compiles the select statement based on the other functions called
      * and runs the query
      *
+     * @param int  $limit  The limit clause
+     * @param int  $offset The offset clause
+     * @param bool $reset  Are we want to clear query builder values?
+     *
      * @return ResultInterface
      */
-    public function get(?int $limit = null, int $offset = 0, bool $reset = true)
+    public function get(int $limit = null, int $offset = 0, bool $reset = true)
     {
-        if ($limit !== null) {
+        if (! is_null($limit)) {
             $this->limit($limit, $offset);
         }
 

@@ -1,26 +1,18 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
 namespace CodeIgniter\Cache\Handlers;
 
 use CodeIgniter\CLI\CLI;
+use CodeIgniter\Test\CIUnitTestCase;
 use Config\Cache;
 
-/**
- * @group CacheLive
- *
- * @internal
- */
-final class RedisHandlerTest extends AbstractHandlerTest
+final class RedisHandlerTest extends CIUnitTestCase
 {
+    private $redisHandler;
+    private static $key1 = 'key1';
+    private static $key2 = 'key2';
+    private static $key3 = 'key3';
+
     private static function getKeyArray()
     {
         return [
@@ -30,6 +22,7 @@ final class RedisHandlerTest extends AbstractHandlerTest
         ];
     }
 
+    private static $dummy = 'dymmy';
     private $config;
 
     protected function setUp(): void
@@ -38,29 +31,29 @@ final class RedisHandlerTest extends AbstractHandlerTest
 
         $this->config = new Cache();
 
-        $this->handler = new RedisHandler($this->config);
+        $this->redisHandler = new RedisHandler($this->config);
 
-        $this->handler->initialize();
+        $this->redisHandler->initialize();
     }
 
-    protected function tearDown(): void
+    public function tearDown(): void
     {
         foreach (self::getKeyArray() as $key) {
-            $this->handler->delete($key);
+            $this->redisHandler->delete($key);
         }
     }
 
     public function testNew()
     {
-        $this->assertInstanceOf(RedisHandler::class, $this->handler);
+        $this->assertInstanceOf(RedisHandler::class, $this->redisHandler);
     }
 
     public function testDestruct()
     {
-        $this->handler = new RedisHandler($this->config);
-        $this->handler->initialize();
+        $this->redisHandler = new RedisHandler($this->config);
+        $this->redisHandler->initialize();
 
-        $this->assertInstanceOf(RedisHandler::class, $this->handler);
+        $this->assertInstanceOf(RedisHandler::class, $this->redisHandler);
     }
 
     /**
@@ -71,13 +64,13 @@ final class RedisHandlerTest extends AbstractHandlerTest
      */
     public function testGet()
     {
-        $this->handler->save(self::$key1, 'value', 2);
+        $this->redisHandler->save(self::$key1, 'value', 2);
 
-        $this->assertSame('value', $this->handler->get(self::$key1));
-        $this->assertNull($this->handler->get(self::$dummy));
+        $this->assertSame('value', $this->redisHandler->get(self::$key1));
+        $this->assertNull($this->redisHandler->get(self::$dummy));
 
         CLI::wait(3);
-        $this->assertNull($this->handler->get(self::$key1));
+        $this->assertNull($this->redisHandler->get(self::$key1));
     }
 
     /**
@@ -88,32 +81,20 @@ final class RedisHandlerTest extends AbstractHandlerTest
      */
     public function testRemember()
     {
-        $this->handler->remember(self::$key1, 2, static function () {
+        $this->redisHandler->remember(self::$key1, 2, static function () {
             return 'value';
         });
 
-        $this->assertSame('value', $this->handler->get(self::$key1));
-        $this->assertNull($this->handler->get(self::$dummy));
+        $this->assertSame('value', $this->redisHandler->get(self::$key1));
+        $this->assertNull($this->redisHandler->get(self::$dummy));
 
         CLI::wait(3);
-        $this->assertNull($this->handler->get(self::$key1));
+        $this->assertNull($this->redisHandler->get(self::$key1));
     }
 
     public function testSave()
     {
-        $this->assertTrue($this->handler->save(self::$key1, 'value'));
-    }
-
-    public function testSavePermanent()
-    {
-        $this->assertTrue($this->handler->save(self::$key1, 'value', 0));
-        $metaData = $this->handler->getMetaData(self::$key1);
-
-        $this->assertNull($metaData['expire']);
-        $this->assertLessThanOrEqual(1, $metaData['mtime'] - time());
-        $this->assertSame('value', $metaData['data']);
-
-        $this->assertTrue($this->handler->delete(self::$key1));
+        $this->assertTrue($this->redisHandler->save(self::$key1, 'value'));
     }
 
     public function testSavePermanent()
@@ -130,29 +111,29 @@ final class RedisHandlerTest extends AbstractHandlerTest
 
     public function testDelete()
     {
-        $this->handler->save(self::$key1, 'value');
+        $this->redisHandler->save(self::$key1, 'value');
 
-        $this->assertTrue($this->handler->delete(self::$key1));
-        $this->assertFalse($this->handler->delete(self::$dummy));
+        $this->assertTrue($this->redisHandler->delete(self::$key1));
+        $this->assertFalse($this->redisHandler->delete(self::$dummy));
     }
 
     public function testDeleteMatchingPrefix()
     {
         // Save 101 items to match on
         for ($i = 1; $i <= 101; $i++) {
-            $this->handler->save('key_' . $i, 'value' . $i);
+            $this->redisHandler->save('key_' . $i, 'value' . $i);
         }
 
         // check that there are 101 items is cache store
-        $dbInfo = explode(',', $this->handler->getCacheInfo()['db0']);
+        $dbInfo = explode(',', $this->redisHandler->getCacheInfo()['db0']);
         $this->assertSame('keys=101', $dbInfo[0]);
 
         // Checking that given the prefix "key_1", deleteMatching deletes 13 keys:
         // (key_1, key_10, key_11, key_12, key_13, key_14, key_15, key_16, key_17, key_18, key_19, key_100, key_101)
-        $this->assertSame(13, $this->handler->deleteMatching('key_1*'));
+        $this->assertSame(13, $this->redisHandler->deleteMatching('key_1*'));
 
         // check that there remains (101 - 13) = 88 items is cache store
-        $dbInfo = explode(',', $this->handler->getCacheInfo()['db0']);
+        $dbInfo = explode(',', $this->redisHandler->getCacheInfo()['db0']);
         $this->assertSame('keys=88', $dbInfo[0]);
     }
 
@@ -160,47 +141,60 @@ final class RedisHandlerTest extends AbstractHandlerTest
     {
         // Save 101 items to match on
         for ($i = 1; $i <= 101; $i++) {
-            $this->handler->save('key_' . $i, 'value' . $i);
+            $this->redisHandler->save('key_' . $i, 'value' . $i);
         }
 
         // check that there are 101 items is cache store
-        $dbInfo = explode(',', $this->handler->getCacheInfo()['db0']);
+        $dbInfo = explode(',', $this->redisHandler->getCacheInfo()['db0']);
         $this->assertSame('keys=101', $dbInfo[0]);
 
         // Checking that given the suffix "1", deleteMatching deletes 11 keys:
         // (key_1, key_11, key_21, key_31, key_41, key_51, key_61, key_71, key_81, key_91, key_101)
-        $this->assertSame(11, $this->handler->deleteMatching('*1'));
+        $this->assertSame(11, $this->redisHandler->deleteMatching('*1'));
 
         // check that there remains (101 - 13) = 88 items is cache store
-        $dbInfo = explode(',', $this->handler->getCacheInfo()['db0']);
+        $dbInfo = explode(',', $this->redisHandler->getCacheInfo()['db0']);
         $this->assertSame('keys=90', $dbInfo[0]);
     }
 
-    // FIXME: I don't like all Hash logic very much. It's wasting memory.
-    // public function testIncrement()
-    // {
-    // }
+    //FIXME: I don't like all Hash logic very much. It's wasting memory.
+    //public function testIncrement()
+    //{
+    //}
 
-    // public function testDecrement()
-    // {
-    // }
+    //public function testDecrement()
+    //{
+    //}
 
     public function testClean()
     {
-        $this->handler->save(self::$key1, 1);
+        $this->redisHandler->save(self::$key1, 1);
 
-        $this->assertTrue($this->handler->clean());
+        $this->assertTrue($this->redisHandler->clean());
     }
 
     public function testGetCacheInfo()
     {
-        $this->handler->save(self::$key1, 'value');
+        $this->redisHandler->save(self::$key1, 'value');
 
-        $this->assertIsArray($this->handler->getCacheInfo());
+        $this->assertIsArray($this->redisHandler->getCacheInfo());
+    }
+
+    public function testGetMetaData()
+    {
+        $time = time();
+        $this->redisHandler->save(self::$key1, 'value');
+
+        $this->assertNull($this->redisHandler->getMetaData(self::$dummy));
+
+        $actual = $this->redisHandler->getMetaData(self::$key1);
+        $this->assertLessThanOrEqual(60, $actual['expire'] - $time);
+        $this->assertLessThanOrEqual(1, $actual['mtime'] - $time);
+        $this->assertSame('value', $actual['data']);
     }
 
     public function testIsSupported()
     {
-        $this->assertTrue($this->handler->isSupported());
+        $this->assertTrue($this->redisHandler->isSupported());
     }
 }

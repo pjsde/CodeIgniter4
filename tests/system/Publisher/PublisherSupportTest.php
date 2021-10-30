@@ -1,156 +1,149 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
 use CodeIgniter\Publisher\Exceptions\PublisherException;
 use CodeIgniter\Publisher\Publisher;
 use CodeIgniter\Test\CIUnitTestCase;
 use Tests\Support\Publishers\TestPublisher;
 
-/**
- * @internal
- */
-final class PublisherSupportTest extends CIUnitTestCase
+class PublisherSupportTest extends CIUnitTestCase
 {
-    /**
-     * A known, valid file
-     *
-     * @var string
-     */
-    private $file = SUPPORTPATH . 'Files/baker/banana.php';
+	/**
+	 * A known, valid file
+	 *
+	 * @var string
+	 */
+	private $file = SUPPORTPATH . 'Files/baker/banana.php';
 
-    /**
-     * A known, valid directory
-     *
-     * @var string
-     */
-    private $directory = SUPPORTPATH . 'Files/able/';
+	/**
+	 * A known, valid directory
+	 *
+	 * @var string
+	 */
+	private $directory = SUPPORTPATH . 'Files/able/';
 
-    /**
-     * Initialize the helper, since some
-     * tests call static methods before
-     * the constructor would load it.
-     */
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
+	/**
+	 * Initialize the helper, since some
+	 * tests call static methods before
+	 * the constructor would load it.
+	 */
+	public static function setUpBeforeClass(): void
+	{
+		parent::setUpBeforeClass();
 
-        helper(['filesystem']);
-    }
+		helper(['filesystem']);
+	}
 
-    public function testDiscoverDefault()
-    {
-        $result = Publisher::discover();
+	//--------------------------------------------------------------------
 
-        $this->assertCount(1, $result);
-        $this->assertInstanceOf(TestPublisher::class, $result[0]);
-    }
+	public function testDiscoverDefault()
+	{
+		$result = Publisher::discover();
 
-    public function testDiscoverNothing()
-    {
-        $result = Publisher::discover('Nothing');
+		$this->assertCount(1, $result);
+		$this->assertInstanceOf(TestPublisher::class, $result[0]);
+	}
 
-        $this->assertSame([], $result);
-    }
+	public function testDiscoverNothing()
+	{
+		$result = Publisher::discover('Nothing');
 
-    public function testDiscoverStores()
-    {
-        $publisher = Publisher::discover()[0];
-        $publisher->set([])->addFile($this->file);
+		$this->assertSame([], $result);
+	}
 
-        $result = Publisher::discover();
-        $this->assertSame($publisher, $result[0]);
-        $this->assertSame([$this->file], $result[0]->get());
-    }
+	public function testDiscoverStores()
+	{
+		$publisher = Publisher::discover()[0];
+		$publisher->set([])->addFile($this->file);
 
-    public function testGetSource()
-    {
-        $publisher = new Publisher(ROOTPATH);
+		$result = Publisher::discover();
+		$this->assertSame($publisher, $result[0]);
+		$this->assertSame([$this->file], $result[0]->get());
+	}
 
-        $this->assertSame(ROOTPATH, $publisher->getSource());
-    }
+	//--------------------------------------------------------------------
 
-    public function testGetDestination()
-    {
-        $publisher = new Publisher(ROOTPATH, SUPPORTPATH);
+	public function testGetSource()
+	{
+		$publisher = new Publisher(ROOTPATH);
 
-        $this->assertSame(SUPPORTPATH, $publisher->getDestination());
-    }
+		$this->assertSame(ROOTPATH, $publisher->getSource());
+	}
 
-    public function testGetScratch()
-    {
-        $publisher = new Publisher();
-        $this->assertNull($this->getPrivateProperty($publisher, 'scratch'));
+	public function testGetDestination()
+	{
+		$publisher = new Publisher(ROOTPATH, SUPPORTPATH);
 
-        $scratch = $publisher->getScratch();
+		$this->assertSame(SUPPORTPATH, $publisher->getDestination());
+	}
 
-        $this->assertIsString($scratch);
-        $this->assertDirectoryExists($scratch);
-        $this->assertDirectoryIsWritable($scratch);
-        $this->assertNotNull($this->getPrivateProperty($publisher, 'scratch'));
+	public function testGetScratch()
+	{
+		$publisher = new Publisher();
+		$this->assertNull($this->getPrivateProperty($publisher, 'scratch'));
 
-        // Directory and contents should be removed on __destruct()
-        $file = $scratch . 'obvious_statement.txt';
-        file_put_contents($file, 'Bananas are a most peculiar fruit');
+		$scratch = $publisher->getScratch();
 
-        $publisher->__destruct();
+		$this->assertIsString($scratch);
+		$this->assertDirectoryExists($scratch);
+		$this->assertDirectoryIsWritable($scratch);
+		$this->assertNotNull($this->getPrivateProperty($publisher, 'scratch'));
 
-        $this->assertFileDoesNotExist($file);
-        $this->assertDirectoryDoesNotExist($scratch);
-    }
+		// Directory and contents should be removed on __destruct()
+		$file = $scratch . 'obvious_statement.txt';
+		file_put_contents($file, 'Bananas are a most peculiar fruit');
 
-    public function testGetErrors()
-    {
-        $publisher = new Publisher();
-        $this->assertSame([], $publisher->getErrors());
+		$publisher->__destruct();
 
-        $expected = [
-            $this->file => PublisherException::forCollision($this->file, $this->file),
-        ];
+		$this->assertFileDoesNotExist($file);
+		$this->assertDirectoryDoesNotExist($scratch);
+	}
 
-        $this->setPrivateProperty($publisher, 'errors', $expected);
+	public function testGetErrors()
+	{
+		$publisher = new Publisher();
+		$this->assertSame([], $publisher->getErrors());
 
-        $this->assertSame($expected, $publisher->getErrors());
-    }
+		$expected = [
+			$this->file => PublisherException::forCollision($this->file, $this->file),
+		];
 
-    public function testWipeDirectory()
-    {
-        $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . bin2hex(random_bytes(6));
-        mkdir($directory, 0700);
-        $this->assertDirectoryExists($directory);
+		$this->setPrivateProperty($publisher, 'errors', $expected);
 
-        $method = $this->getPrivateMethodInvoker(Publisher::class, 'wipeDirectory');
-        $method($directory);
+		$this->assertSame($expected, $publisher->getErrors());
+	}
 
-        $this->assertDirectoryDoesNotExist($directory);
-    }
+	//--------------------------------------------------------------------
 
-    public function testWipeIgnoresFiles()
-    {
-        $method = $this->getPrivateMethodInvoker(Publisher::class, 'wipeDirectory');
-        $method($this->file);
+	public function testWipeDirectory()
+	{
+		$directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . bin2hex(random_bytes(6));
+		mkdir($directory, 0700);
+		$this->assertDirectoryExists($directory);
 
-        $this->assertFileExists($this->file);
-    }
+		$method = $this->getPrivateMethodInvoker(Publisher::class, 'wipeDirectory');
+		$method($directory);
 
-    public function testWipe()
-    {
-        $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . bin2hex(random_bytes(6));
-        mkdir($directory, 0700);
-        $directory = realpath($directory) ?: $directory;
-        $this->assertDirectoryExists($directory);
-        config('Publisher')->restrictions[$directory] = ''; // Allow the directory
+		$this->assertDirectoryDoesNotExist($directory);
+	}
 
-        $publisher = new Publisher($this->directory, $directory);
-        $publisher->wipe();
+	public function testWipeIgnoresFiles()
+	{
+		$method = $this->getPrivateMethodInvoker(Publisher::class, 'wipeDirectory');
+		$method($this->file);
 
-        $this->assertDirectoryDoesNotExist($directory);
-    }
+		$this->assertFileExists($this->file);
+	}
+
+	public function testWipe()
+	{
+		$directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . bin2hex(random_bytes(6));
+		mkdir($directory, 0700);
+		$this->assertDirectoryExists($directory);
+		config('Publisher')->restrictions[$directory] = ''; // Allow the directory
+
+		$publisher = new Publisher($this->directory, $directory);
+		$publisher->wipe();
+
+		$this->assertDirectoryDoesNotExist($directory);
+	}
 }

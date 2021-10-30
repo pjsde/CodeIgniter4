@@ -1,12 +1,12 @@
 <?php
 
 /**
- * This file is part of CodeIgniter 4 framework.
+ * This file is part of the CodeIgniter 4 framework.
  *
  * (c) CodeIgniter Foundation <admin@codeigniter.com>
  *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace CodeIgniter\Session\Handlers;
@@ -15,7 +15,7 @@ use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Session\Exceptions\SessionException;
 use Config\App as AppConfig;
 use Config\Database;
-use ReturnTypeWillChange;
+use Exception;
 
 /**
  * Session handler using current Database for storage
@@ -57,25 +57,33 @@ class DatabaseHandler extends BaseHandler
      */
     protected $rowExists = false;
 
+    //--------------------------------------------------------------------
+
     /**
-     * @throws SessionException
+     * Constructor
+     *
+     * @param AppConfig $config
+     * @param string    $ipAddress
      */
     public function __construct(AppConfig $config, string $ipAddress)
     {
         parent::__construct($config, $ipAddress);
+
+        // Determine Table
         $this->table = $config->sessionSavePath;
 
         if (empty($this->table)) {
             throw SessionException::forMissingDatabaseTable();
         }
 
+        // Get DB Connection
         // @phpstan-ignore-next-line
         $this->DBGroup = $config->sessionDBGroup ?? config(Database::class)->defaultGroup;
 
         $this->db = Database::connect($this->DBGroup);
 
+        // Determine Database type
         $driver = strtolower(get_class($this->db));
-
         if (strpos($driver, 'mysql') !== false) {
             $this->platform = 'mysql';
         } elseif (strpos($driver, 'postgre') !== false) {
@@ -83,13 +91,21 @@ class DatabaseHandler extends BaseHandler
         }
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Re-initialize existing session, or creates a new one.
+     * Open
      *
-     * @param string $path The path where to store/retrieve the session
-     * @param string $name The session name
+     * Ensures we have an initialized database connection.
+     *
+     * @param string $savePath Path to session files' directory
+     * @param string $name     Session cookie name
+     *
+     * @return bool
+     *
+     * @throws Exception
      */
-    public function open($path, $name): bool
+    public function open($savePath, $name): bool
     {
         if (empty($this->db->connID)) {
             $this->db->initialize();
@@ -98,30 +114,33 @@ class DatabaseHandler extends BaseHandler
         return true;
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Reads the session data from the session storage, and returns the results.
+     * Read
      *
-     * @param string $id The session ID
+     * Reads session data and acquires a lock
      *
-     * @return false|string Returns an encoded string of the read data.
-     *                      If nothing was read, it must return false.
+     * @param string $sessionID Session ID
+     *
+     * @return string Serialized session data
      */
-    #[ReturnTypeWillChange]
-    public function read($id)
+    public function read($sessionID): string
     {
-        if ($this->lockSession($id) === false) {
+        if ($this->lockSession($sessionID) === false) {
             $this->fingerprint = md5('');
 
             return '';
         }
 
-        if (! isset($this->sessionID)) {
-            $this->sessionID = $id;
+        // Needed by write() to detect session_regenerate_id() calls
+        if (is_null($this->sessionID)) { // @phpstan-ignore-line
+            $this->sessionID = $sessionID;
         }
 
         $builder = $this->db->table($this->table)
-            ->select($this->platform === 'postgre' ? "encode(data, 'base64') AS data" : 'data')
-            ->where('id', $id);
+                ->select($this->platform === 'postgre' ? "encode(data, 'base64') AS data" : 'data')
+                ->where('id', $sessionID);
 
         if ($this->matchIP) {
             $builder = $builder->where('ip_address', $this->ipAddress);
@@ -151,41 +170,48 @@ class DatabaseHandler extends BaseHandler
         return $result;
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Writes the session data to the session storage.
+     * Write
      *
-     * @param string $id   The session ID
-     * @param string $data The encoded session data
+     * Writes (create / update) session data
+     *
+     * @param string $sessionID   Session ID
+     * @param string $sessionData Serialized session data
+     *
+     * @return bool
      */
-    public function write($id, $data): bool
+    public function write($sessionID, $sessionData): bool
     {
         if ($this->lock === false) {
             return $this->fail();
         }
 
-        if ($this->sessionID !== $id) {
+        // Was the ID regenerated?
+        if ($sessionID !== $this->sessionID) {
             $this->rowExists = false;
-            $this->sessionID = $id;
+            $this->sessionID = $sessionID;
         }
 
         if ($this->rowExists === false) {
             $insertData = [
-                'id'         => $id,
+                'id'         => $sessionID,
                 'ip_address' => $this->ipAddress,
-                'data'       => $this->platform === 'postgre' ? '\x' . bin2hex($data) : $data,
+                'data'       => $this->platform === 'postgre' ? '\x' . bin2hex($sessionData) : $sessionData,
             ];
 
             if (! $this->db->table($this->table)->set('timestamp', 'now()', false)->insert($insertData)) {
                 return $this->fail();
             }
 
-            $this->fingerprint = md5($data);
+            $this->fingerprint = md5($sessionData);
             $this->rowExists   = true;
 
             return true;
         }
 
-        $builder = $this->db->table($this->table)->where('id', $id);
+        $builder = $this->db->table($this->table)->where('id', $sessionID);
 
         if ($this->matchIP) {
             $builder = $builder->where('ip_address', $this->ipAddress);
@@ -193,36 +219,48 @@ class DatabaseHandler extends BaseHandler
 
         $updateData = [];
 
-        if ($this->fingerprint !== md5($data)) {
-            $updateData['data'] = ($this->platform === 'postgre') ? '\x' . bin2hex($data) : $data;
+        if ($this->fingerprint !== md5($sessionData)) {
+            $updateData['data'] = ($this->platform === 'postgre') ? '\x' . bin2hex($sessionData) : $sessionData;
         }
 
         if (! $builder->set('timestamp', 'now()', false)->update($updateData)) {
             return $this->fail();
         }
 
-        $this->fingerprint = md5($data);
+        $this->fingerprint = md5($sessionData);
 
         return true;
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Closes the current session.
+     * Close
+     *
+     * Releases locks and closes file descriptor.
+     *
+     * @return bool
      */
     public function close(): bool
     {
         return ($this->lock && ! $this->releaseLock()) ? $this->fail() : true;
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Destroys a session
+     * Destroy
      *
-     * @param string $id The session ID being destroyed
+     * Destroys the current session.
+     *
+     * @param string $sessionID
+     *
+     * @return bool
      */
-    public function destroy($id): bool
+    public function destroy($sessionID): bool
     {
         if ($this->lock) {
-            $builder = $this->db->table($this->table)->where('id', $id);
+            $builder = $this->db->table($this->table)->where('id', $sessionID);
 
             if ($this->matchIP) {
                 $builder = $builder->where('ip_address', $this->ipAddress);
@@ -242,25 +280,33 @@ class DatabaseHandler extends BaseHandler
         return $this->fail();
     }
 
+    //--------------------------------------------------------------------
+
     /**
-     * Cleans up expired sessions.
+     * Garbage Collector
      *
-     * @param int $max_lifetime Sessions that have not updated
-     *                          for the last max_lifetime seconds will be removed.
+     * Deletes expired sessions
      *
-     * @return false|int Returns the number of deleted sessions on success, or false on failure.
+     * @param int $maxlifetime Maximum lifetime of sessions
+     *
+     * @return bool
      */
-    #[ReturnTypeWillChange]
-    public function gc($max_lifetime)
+    public function gc($maxlifetime): bool
     {
         $separator = $this->platform === 'postgre' ? '\'' : ' ';
-        $interval  = implode($separator, ['', "{$max_lifetime} second", '']);
+        $interval  = implode($separator, ['', "{$maxlifetime} second", '']);
 
-        return $this->db->table($this->table)->where('timestamp <', "now() - INTERVAL {$interval}", false)->delete() ? 1 : $this->fail();
+        return $this->db->table($this->table)->where("timestamp <", "now() - INTERVAL {$interval}", false)->delete() ? true : $this->fail();
     }
+
+    //--------------------------------------------------------------------
 
     /**
      * Lock the session.
+     *
+     * @param string $sessionID
+     *
+     * @return bool
      */
     protected function lockSession(string $sessionID): bool
     {
@@ -290,8 +336,12 @@ class DatabaseHandler extends BaseHandler
         return parent::lockSession($sessionID);
     }
 
+    //--------------------------------------------------------------------
+
     /**
      * Releases the lock, if any.
+     *
+     * @return bool
      */
     protected function releaseLock(): bool
     {
@@ -322,4 +372,6 @@ class DatabaseHandler extends BaseHandler
         // Unsupported DB? Let the parent handle the simple version.
         return parent::releaseLock();
     }
+
+    //--------------------------------------------------------------------
 }

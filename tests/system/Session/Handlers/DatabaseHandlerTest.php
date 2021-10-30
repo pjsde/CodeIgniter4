@@ -1,14 +1,5 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
 namespace CodeIgniter\Session\Handlers;
 
 use CodeIgniter\Test\CIUnitTestCase;
@@ -17,16 +8,13 @@ use CodeIgniter\Test\ReflectionHelper;
 use Config\App as AppConfig;
 use Config\Database as DatabaseConfig;
 
-/**
- * @internal
- */
-final class DatabaseHandlerTest extends CIUnitTestCase
+class DatabaseHandlerTest extends CIUnitTestCase
 {
-    use DatabaseTestTrait;
-    use ReflectionHelper;
+    use DatabaseTestTrait, ReflectionHelper;
 
     protected $refresh = true;
-    protected $seed    = 'Tests\Support\Database\Seeds\CITestSeeder';
+
+    protected $seed = 'Tests\Support\Database\Seeds\CITestSeeder';
 
     protected function setUp(): void
     {
@@ -58,7 +46,7 @@ final class DatabaseHandlerTest extends CIUnitTestCase
         $appConfig = new AppConfig();
 
         foreach ($config as $key => $c) {
-            $appConfig->{$key} = $c;
+            $appConfig->$key = $c;
         }
 
         return new DatabaseHandler($appConfig, '127.0.0.1');
@@ -135,6 +123,6 @@ final class DatabaseHandlerTest extends CIUnitTestCase
     public function testGC()
     {
         $handler = $this->getInstance();
-        $this->assertSame(1, $handler->gc(3600));
+        $this->assertTrue($handler->gc(3600));
     }
 }

@@ -1,12 +1,12 @@
 <?php
 
 /**
- * This file is part of CodeIgniter 4 framework.
+ * This file is part of the CodeIgniter 4 framework.
  *
  * (c) CodeIgniter Foundation <admin@codeigniter.com>
  *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace CodeIgniter;
@@ -29,6 +29,8 @@ use ReflectionException;
 use ReflectionProperty;
 
 /**
+ * Class Model
+ *
  * The Model class extends BaseModel and provides additional
  * convenient features that makes working with a SQL database
  * table less painful.
@@ -38,7 +40,7 @@ use ReflectionProperty;
  *      - allow intermingling calls to the builder
  *      - removes the need to use Result object directly in most cases
  *
- * @mixin BaseBuilder
+ * @mixin    BaseBuilder
  *
  * @property BaseConnection $db
  */
@@ -89,7 +91,13 @@ class Model extends BaseModel
      */
     protected $escape = [];
 
-    public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null)
+    /**
+     * Model constructor.
+     *
+     * @param ConnectionInterface|null $db         DB Connection
+     * @param ValidationInterface|null $validation Validation
+     */
+    public function __construct(ConnectionInterface &$db = null, ValidationInterface $validation = null)
     {
         /**
          * @var BaseConnection $db
@@ -216,7 +224,7 @@ class Model extends BaseModel
      *
      * @param array $data Data
      *
-     * @return bool|Query
+     * @return Query|bool
      */
     protected function doInsert(array $data)
     {
@@ -251,11 +259,11 @@ class Model extends BaseModel
      * This methods works only with dbCalls
      *
      * @param array|null $set       An associative array of insert values
-     * @param bool|null  $escape    Whether to escape values
+     * @param bool|null  $escape    Whether to escape values and identifiers
      * @param int        $batchSize The size of the batch to run
      * @param bool       $testing   True means only number of records is returned, false will execute the query
      *
-     * @return bool|int Number of rows inserted or FALSE on failure
+     * @return int|bool Number of rows inserted or FALSE on failure
      */
     protected function doInsertBatch(?array $set = null, ?bool $escape = null, int $batchSize = 100, bool $testing = false)
     {
@@ -276,8 +284,10 @@ class Model extends BaseModel
      * Updates a single record in $this->table.
      * This methods works only with dbCalls
      *
-     * @param array|int|string|null $id
-     * @param array|null            $data
+     * @param int|array|string|null $id   ID
+     * @param array|null            $data Data
+     *
+     * @return bool
      */
     protected function doUpdate($id = null, $data = null): bool
     {
@@ -307,11 +317,11 @@ class Model extends BaseModel
      * @param int         $batchSize The size of the batch to run
      * @param bool        $returnSQL True means SQL is returned, false will execute the query
      *
-     * @throws DatabaseException
-     *
      * @return mixed Number of rows affected or FALSE on failure
+     *
+     * @throws DatabaseException
      */
-    protected function doUpdateBatch(?array $set = null, ?string $index = null, int $batchSize = 100, bool $returnSQL = false)
+    protected function doUpdateBatch(array $set = null, string $index = null, int $batchSize = 100, bool $returnSQL = false)
     {
         return $this->builder()->testMode($returnSQL)->updateBatch($set, $index, $batchSize);
     }
@@ -321,12 +331,12 @@ class Model extends BaseModel
      * the table's primaryKey
      * This methods works only with dbCalls
      *
-     * @param array|int|string|null $id    The rows primary key(s)
+     * @param int|string|array|null $id    The rows primary key(s)
      * @param bool                  $purge Allows overriding the soft deletes setting.
      *
-     * @throws DatabaseException
+     * @return string|bool
      *
-     * @return bool|string
+     * @throws DatabaseException
      */
     protected function doDelete($id = null, bool $purge = false)
     {
@@ -377,6 +387,8 @@ class Model extends BaseModel
      * Works with the find* methods to return only the rows that
      * have been deleted.
      * This methods works only with dbCalls
+     *
+     * @return void
      */
     protected function doOnlyDeleted()
     {
@@ -392,7 +404,7 @@ class Model extends BaseModel
      *
      * @return mixed
      */
-    protected function doReplace(?array $data = null, bool $returnSQL = false)
+    protected function doReplace(array $data = null, bool $returnSQL = false)
     {
         return $this->builder()->testMode($returnSQL)->replace($data);
     }
@@ -422,7 +434,7 @@ class Model extends BaseModel
      *
      * @param array|object $data Data
      *
-     * @return array|int|string|null
+     * @return int|array|string|null
      *
      * @deprecated Use getIdValue() instead. Will be removed in version 5.0.
      */
@@ -436,7 +448,7 @@ class Model extends BaseModel
      *
      * @param array|object $data Data
      *
-     * @return array|int|string|null
+     * @return int|array|string|null
      */
     public function getIdValue($data)
     {
@@ -456,6 +468,11 @@ class Model extends BaseModel
      * Works with $this->builder to get the Compiled select to
      * determine the rows to operate on.
      * This methods works only with dbCalls
+     *
+     * @param int     $size     Size
+     * @param Closure $userFunc Callback Function
+     *
+     * @return void
      *
      * @throws DataException
      */
@@ -491,6 +508,9 @@ class Model extends BaseModel
     /**
      * Override countAllResults to account for soft deleted accounts.
      *
+     * @param bool $reset Reset
+     * @param bool $test  Test
+     *
      * @return mixed
      */
     public function countAllResults(bool $reset = true, bool $test = false)
@@ -512,9 +532,11 @@ class Model extends BaseModel
     /**
      * Provides a shared instance of the Query Builder.
      *
-     * @throws ModelException
+     * @param string|null $table Table name
      *
      * @return BaseBuilder
+     *
+     * @throws ModelException
      */
     public function builder(?string $table = null)
     {
@@ -559,7 +581,7 @@ class Model extends BaseModel
      *
      * @param mixed     $key    Field name, or an array of field/value pairs
      * @param mixed     $value  Field value, if $key is a single field
-     * @param bool|null $escape Whether to escape values
+     * @param bool|null $escape Whether to escape values and identifiers
      *
      * @return $this
      */
@@ -581,27 +603,30 @@ class Model extends BaseModel
      * If this method return false insert operation will be executed
      *
      * @param array|object $data Data
+     *
+     * @return bool
      */
-    protected function shouldUpdate($data): bool
+    protected function shouldUpdate($data) : bool
     {
         // When useAutoIncrement feature is disabled check
         // in the database if given record already exists
-        return parent::shouldUpdate($data)
-            && $this->useAutoIncrement
+        return parent::shouldUpdate($data) &&
+            ($this->useAutoIncrement
                 ? true
-                : $this->where($this->primaryKey, $this->getIdValue($data))->countAllResults() === 1;
+                : $this->where($this->primaryKey, $this->getIdValue($data))->countAllResults() === 1
+            );
     }
 
     /**
      * Inserts data into the database. If an object is provided,
      * it will attempt to convert it to an array.
      *
-     * @param array|object|null $data
+     * @param array|object|null $data     Data
      * @param bool              $returnID Whether insert ID should be returned or not.
      *
-     * @throws ReflectionException
+     * @return BaseResult|object|int|string|false
      *
-     * @return BaseResult|false|int|object|string
+     * @throws ReflectionException
      */
     public function insert($data = null, bool $returnID = true)
     {
@@ -624,8 +649,10 @@ class Model extends BaseModel
      * Updates a single record in the database. If an object is provided,
      * it will attempt to convert it into an array.
      *
-     * @param array|int|string|null $id
-     * @param array|object|null     $data
+     * @param int|array|string|null $id   ID
+     * @param array|object|null     $data Data
+     *
+     * @return bool
      *
      * @throws ReflectionException
      */
@@ -650,22 +677,21 @@ class Model extends BaseModel
      * Takes a class an returns an array of it's public and protected
      * properties as an array with raw values.
      *
-     * @param object|string $data
-     * @param bool          $recursive If true, inner entities will be casted as array as well
-     *
-     * @throws ReflectionException
+     * @param string|object $data        Data
+     * @param bool          $onlyChanged Only Changed Property
+     * @param bool          $recursive   If true, inner entities will be casted as array as well
      *
      * @return array|null Array
+     *
+     * @throws ReflectionException
      */
     protected function objectToRawArray($data, bool $onlyChanged = true, bool $recursive = false): ?array
     {
         $properties = parent::objectToRawArray($data, $onlyChanged);
 
         // Always grab the primary key otherwise updates will fail.
-        if (
-            method_exists($data, 'toRawArray') && (! empty($properties) && ! empty($this->primaryKey) && ! in_array($this->primaryKey, $properties, true)
-            && ! empty($data->{$this->primaryKey}))
-        ) {
+        if (method_exists($data, 'toRawArray') && (! empty($properties) && ! empty($this->primaryKey) && ! in_array($this->primaryKey, $properties, true)
+                && ! empty($data->{$this->primaryKey}))) {
             $properties[$this->primaryKey] = $data->{$this->primaryKey};
         }
 
@@ -681,21 +707,25 @@ class Model extends BaseModel
      */
     public function __get(string $name)
     {
-        if (parent::__isset($name)) {
-            return parent::__get($name);
-        }
+         if (parent::__isset($name))
+         {
+             return parent::__get($name);
+         }
 
-        if (isset($this->builder()->{$name})) {
-            return $this->builder()->{$name};
-        }
+         if (isset($this->builder()->$name))
+         {
+             return $this->builder()->$name;
+         }
 
-        return null;
+         return null;
     }
 
     /**
      * Checks for the existence of properties across this model, builder, and db connection.
      *
      * @param string $name Name
+     *
+     * @return bool
      */
     public function __isset(string $name): bool
     {
@@ -703,26 +733,34 @@ class Model extends BaseModel
             return true;
         }
 
-        return isset($this->builder()->{$name});
+        return isset($this->builder()->$name);
     }
 
     /**
      * Provides direct access to method in the builder (if available)
      * and the database connection.
      *
-     * @return mixed
+     * @param string $name   Name
+     * @param array  $params Params
+     *
+     * @return $this|null
      */
     public function __call(string $name, array $params)
     {
-        $builder = $this->builder();
-        $result  = null;
+        $result = parent::__call($name, $params);
 
-        if (method_exists($this->db, $name)) {
-            $result = $this->db->{$name}(...$params);
-        } elseif (method_exists($builder, $name)) {
+        if ($result === null && method_exists($builder = $this->builder(), $name)) {
             $result = $builder->{$name}(...$params);
-        } else {
-            throw new BadMethodCallException('Call to undefined method ' . static::class . '::' . $name);
+        }
+
+        if (empty($result)) {
+            if (! method_exists($this->builder(), $name)) {
+                $className = static::class;
+
+                throw new BadMethodCallException('Call to undefined method ' . $className . '::' . $name);
+            }
+
+            return $result;
         }
 
         if ($result instanceof BaseBuilder) {
@@ -736,8 +774,12 @@ class Model extends BaseModel
      * Takes a class an returns an array of it's public and protected
      * properties as an array suitable for use in creates and updates.
      *
-     * @param object|string $data
-     * @param string|null   $primaryKey
+     * @param string|object $data        Data
+     * @param string|null   $primaryKey  Primary Key
+     * @param string        $dateFormat  Date Format
+     * @param bool          $onlyChanged Only Changed
+     *
+     * @return array
      *
      * @throws ReflectionException
      *

@@ -1,156 +1,150 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
+use CodeIgniter\Publisher\Exceptions\PublisherException;
 use CodeIgniter\Publisher\Publisher;
 use CodeIgniter\Test\CIUnitTestCase;
+use Tests\Support\Publishers\TestPublisher;
 
-/**
- * @internal
- */
-final class PublisherInputTest extends CIUnitTestCase
+class PublisherInputTest extends CIUnitTestCase
 {
-    /**
-     * A known, valid file
-     *
-     * @var string
-     */
-    private $file = SUPPORTPATH . 'Files/baker/banana.php';
+	/**
+	 * A known, valid file
+	 *
+	 * @var string
+	 */
+	private $file = SUPPORTPATH . 'Files/baker/banana.php';
 
-    /**
-     * A known, valid directory
-     *
-     * @var string
-     */
-    private $directory = SUPPORTPATH . 'Files/able/';
+	/**
+	 * A known, valid directory
+	 *
+	 * @var string
+	 */
+	private $directory = SUPPORTPATH . 'Files/able/';
 
-    /**
-     * Initialize the helper, since some
-     * tests call static methods before
-     * the constructor would load it.
-     */
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
+	/**
+	 * Initialize the helper, since some
+	 * tests call static methods before
+	 * the constructor would load it.
+	 */
+	public static function setUpBeforeClass(): void
+	{
+		parent::setUpBeforeClass();
 
-        helper(['filesystem']);
-    }
+		helper(['filesystem']);
+	}
 
-    public function testAddPathFile()
-    {
-        $publisher = new Publisher(SUPPORTPATH . 'Files');
+	//--------------------------------------------------------------------
 
-        $publisher->addPath('baker/banana.php');
+	public function testAddPathFile()
+	{
+		$publisher = new Publisher(SUPPORTPATH . 'Files');
 
-        $this->assertSame([$this->file], $publisher->get());
-    }
+		$publisher->addPath('baker/banana.php');
 
-    public function testAddPathFileRecursiveDoesNothing()
-    {
-        $publisher = new Publisher(SUPPORTPATH . 'Files');
+		$this->assertSame([$this->file], $publisher->get());
+	}
 
-        $publisher->addPath('baker/banana.php', true);
+	public function testAddPathFileRecursiveDoesNothing()
+	{
+		$publisher = new Publisher(SUPPORTPATH . 'Files');
 
-        $this->assertSame([$this->file], $publisher->get());
-    }
+		$publisher->addPath('baker/banana.php', true);
 
-    public function testAddPathDirectory()
-    {
-        $publisher = new Publisher(SUPPORTPATH . 'Files');
+		$this->assertSame([$this->file], $publisher->get());
+	}
 
-        $expected = [
-            $this->directory . 'apple.php',
-            $this->directory . 'fig_3.php',
-            $this->directory . 'prune_ripe.php',
-        ];
+	public function testAddPathDirectory()
+	{
+		$publisher = new Publisher(SUPPORTPATH . 'Files');
 
-        $publisher->addPath('able');
+		$expected = [
+			$this->directory . 'apple.php',
+			$this->directory . 'fig_3.php',
+			$this->directory . 'prune_ripe.php',
+		];
 
-        $this->assertSame($expected, $publisher->get());
-    }
+		$publisher->addPath('able');
 
-    public function testAddPathDirectoryRecursive()
-    {
-        $publisher = new Publisher(SUPPORTPATH);
+		$this->assertSame($expected, $publisher->get());
+	}
 
-        $expected = [
-            $this->directory . 'apple.php',
-            $this->directory . 'fig_3.php',
-            $this->directory . 'prune_ripe.php',
-            SUPPORTPATH . 'Files/baker/banana.php',
-        ];
+	public function testAddPathDirectoryRecursive()
+	{
+		$publisher = new Publisher(SUPPORTPATH);
 
-        $publisher->addPath('Files');
+		$expected = [
+			$this->directory . 'apple.php',
+			$this->directory . 'fig_3.php',
+			$this->directory . 'prune_ripe.php',
+			SUPPORTPATH . 'Files/baker/banana.php',
+		];
 
-        $this->assertSame($expected, $publisher->get());
-    }
+		$publisher->addPath('Files');
 
-    public function testAddPaths()
-    {
-        $publisher = new Publisher(SUPPORTPATH . 'Files');
+		$this->assertSame($expected, $publisher->get());
+	}
 
-        $expected = [
-            $this->directory . 'apple.php',
-            $this->directory . 'fig_3.php',
-            $this->directory . 'prune_ripe.php',
-            SUPPORTPATH . 'Files/baker/banana.php',
-        ];
+	public function testAddPaths()
+	{
+		$publisher = new Publisher(SUPPORTPATH . 'Files');
 
-        $publisher->addPaths([
-            'able',
-            'baker/banana.php',
-        ]);
+		$expected = [
+			$this->directory . 'apple.php',
+			$this->directory . 'fig_3.php',
+			$this->directory . 'prune_ripe.php',
+			SUPPORTPATH . 'Files/baker/banana.php',
+		];
 
-        $this->assertSame($expected, $publisher->get());
-    }
+		$publisher->addPaths([
+			'able',
+			'baker/banana.php',
+		]);
 
-    public function testAddPathsRecursive()
-    {
-        $publisher = new Publisher(SUPPORTPATH);
+		$this->assertSame($expected, $publisher->get());
+	}
 
-        $expected = [
-            $this->directory . 'apple.php',
-            $this->directory . 'fig_3.php',
-            $this->directory . 'prune_ripe.php',
-            SUPPORTPATH . 'Files/baker/banana.php',
-            SUPPORTPATH . 'Log/Handlers/TestHandler.php',
-        ];
+	public function testAddPathsRecursive()
+	{
+		$publisher = new Publisher(SUPPORTPATH);
 
-        $publisher->addPaths([
-            'Files',
-            'Log',
-        ], true);
+		$expected = [
+			$this->directory . 'apple.php',
+			$this->directory . 'fig_3.php',
+			$this->directory . 'prune_ripe.php',
+			SUPPORTPATH . 'Files/baker/banana.php',
+			SUPPORTPATH . 'Log/Handlers/TestHandler.php',
+		];
 
-        $this->assertSame($expected, $publisher->get());
-    }
+		$publisher->addPaths([
+			'Files',
+			'Log',
+		], true);
 
-    public function testAddUri()
-    {
-        $publisher = new Publisher();
-        $publisher->addUri('https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/composer.json');
+		$this->assertSame($expected, $publisher->get());
+	}
 
-        $scratch = $this->getPrivateProperty($publisher, 'scratch');
+	//--------------------------------------------------------------------
 
-        $this->assertSame([$scratch . 'composer.json'], $publisher->get());
-    }
+	public function testAddUri()
+	{
+		$publisher = new Publisher();
+		$publisher->addUri('https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/composer.json');
 
-    public function testAddUris()
-    {
-        $publisher = new Publisher();
-        $publisher->addUris([
-            'https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/LICENSE',
-            'https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/composer.json',
-        ]);
+		$scratch = $this->getPrivateProperty($publisher, 'scratch');
 
-        $scratch = $this->getPrivateProperty($publisher, 'scratch');
+		$this->assertSame([$scratch . 'composer.json'], $publisher->get());
+	}
 
-        $this->assertSame([$scratch . 'LICENSE', $scratch . 'composer.json'], $publisher->get());
-    }
+	public function testAddUris()
+	{
+		$publisher = new Publisher();
+		$publisher->addUris([
+			'https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/LICENSE',
+			'https://raw.githubusercontent.com/codeigniter4/CodeIgniter4/develop/composer.json',
+		]);
+
+		$scratch = $this->getPrivateProperty($publisher, 'scratch');
+
+		$this->assertSame([$scratch . 'LICENSE', $scratch . 'composer.json'], $publisher->get());
+	}
 }

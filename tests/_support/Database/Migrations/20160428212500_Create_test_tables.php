@@ -1,14 +1,5 @@
 <?php
 
-/**
- * This file is part of CodeIgniter 4 framework.
- *
- * (c) CodeIgniter Foundation <admin@codeigniter.com>
- *
- * For the full copyright and license information, please view
- * the LICENSE file that was distributed with this source code.
- */
-
 namespace Tests\Support\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
@@ -45,9 +36,9 @@ class Migration_Create_test_tables extends Migration
             'value' => ['type' => 'VARCHAR', 'constraint' => 400, 'null' => true],
         ])->addKey('id', true)->createTable('misc', true);
 
-        // Database Type test table
-        // missing types :
-        // TINYINT,MEDIUMINT,BIT,YEAR,BINARY , VARBINARY, TINYTEXT,LONGTEXT,YEAR,JSON,Spatial data types
+        //Database Type test table
+        //missing types :
+        //TINYINT,MEDIUMINT,BIT,YEAR,BINARY , VARBINARY, TINYTEXT,LONGTEXT,YEAR,JSON,Spatial data types
         // id must be interger else SQLite3 error on not null for autoinc field
         $data_type_fields = [
             'id'              => ['type' => 'INTEGER', 'constraint' => 20, 'auto_increment' => true],
@@ -153,6 +144,8 @@ class Migration_Create_test_tables extends Migration
         }
     }
 
+    //--------------------------------------------------------------------
+
     public function down()
     {
         $this->forge->dropTable('user', true);
@@ -165,7 +158,7 @@ class Migration_Create_test_tables extends Migration
         $this->forge->dropTable('without_auto_increment', true);
         $this->forge->dropTable('ip_table', true);
 
-        if (in_array($this->db->DBDriver, ['MySQLi', 'Postgre'], true)) {
+        if (in_array($this->db->DBDriver, ['MySQLi', 'Postgre'])) {
             $this->forge->dropTable('ci_sessions', true);
         }
     }
